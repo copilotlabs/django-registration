@@ -94,6 +94,23 @@ def activate(request, backend,
                               kwargs,
                               context_instance=context)
 
+@sensitive_post_parameters()
+@csrf_protect
+@never_cache
+def activate_new_password(request, backend, activation_key):
+    profile = RegistrationProfile.objects.get_activation_profile(activation_key)
+    if profile:
+        user = profile.user
+        if request.method == 'POST':
+            form = set_password_form(user, request.POST)
+            if form.is_valid():
+                form.save()
+                return activate(request, backend, activation_key=activation_key)
+        else:
+            form = set_password_form(None)
+            return render_to_response('registration/password_set_form.html',
+                                      {'form':form})
+    return render_to_response('registration/activate.html')
 
 def register(request, backend, success_url=None, form_class=None,
              disallowed_url='registration_disallowed',
