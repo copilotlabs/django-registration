@@ -1,5 +1,5 @@
 
-from registration.backends.simple import SimpleBackend
+from registration.backends.default import DefaultBackend
 from registration.forms import RegistrationFormUsernameEmailMatch
 
 
