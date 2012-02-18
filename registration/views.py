@@ -5,6 +5,8 @@ Views which allow users to create and activate accounts.
 
 import simplejson as json
 
+from django.views.decorators.cache import never_cache
+from django.views.decorators.csrf import csrf_protect
 from django.contrib.auth import REDIRECT_FIELD_NAME
 from django.shortcuts import redirect
 from django.shortcuts import render_to_response
@@ -12,6 +14,7 @@ from django.template import RequestContext
 from django.http import HttpResponse
 
 from registration.backends import get_backend
+from registration.models import RegistrationProfile
 
 
 def activate(request, backend,
@@ -94,7 +97,6 @@ def activate(request, backend,
                               kwargs,
                               context_instance=context)
 
-@sensitive_post_parameters()
 @csrf_protect
 @never_cache
 def activate_new_password(request, backend, activation_key):
