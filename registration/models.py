@@ -45,19 +45,30 @@ class RegistrationManager(models.Manager):
         # Make sure the key we're trying conforms to the pattern of a
         # SHA1 hash; if it doesn't, no point trying to look it up in
         # the database.
-        if SHA1_RE.search(activation_key):
-            try:
-                profile = self.get(activation_key=activation_key)
-            except self.model.DoesNotExist:
-                return False
-            if not profile.activation_key_expired():
-                user = profile.user
-                user.is_active = True
-                user.save()
-                profile.activation_key = self.model.ACTIVATED
-                profile.save()
-                return user
+        profile = self.get_activation_profile(activation_key)
+        if profile:
+            user = profile.user
+            user.is_active = True
+            user.save()
+            profile.activation_key = self.model.ACTIVATED
+            profile.save()
+            return user
         return False
+
+    def get_activation_profile(self, activation_key):
+        """
+        Return the activation profile if the key is valid, else return False.
+
+        """
+        if not SHA1_RE.search(activation_key):
+            return False
+        try:
+            profile = self.get(activation_key=activation_key)
+        except self.model.DoesNotExist:
+            return False
+        if profile.activation_key_expired():
+            return False
+        return profile
     
     def create_inactive_user(self, username, email, password,
                              site, send_email=True):
