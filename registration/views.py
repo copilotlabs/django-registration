@@ -8,8 +8,9 @@ import simplejson as json
 from django.views.decorators.cache import never_cache
 from django.views.decorators.csrf import csrf_protect
 from django.contrib.auth import REDIRECT_FIELD_NAME
+from django.contrib.auth.forms import SetPasswordForm
 from django.shortcuts import redirect
-from django.shortcuts import render_to_response
+from django.shortcuts import render_to_response, render
 from django.template import RequestContext
 from django.http import HttpResponse
 
@@ -104,15 +105,15 @@ def activate_new_password(request, backend, activation_key):
     if profile:
         user = profile.user
         if request.method == 'POST':
-            form = set_password_form(user, request.POST)
+            form = SetPasswordForm(user, request.POST)
             if form.is_valid():
                 form.save()
                 return activate(request, backend, activation_key=activation_key)
         else:
-            form = set_password_form(None)
-            return render_to_response('registration/password_set_form.html',
-                                      {'form':form})
-    return render_to_response('registration/activate.html')
+            form = SetPasswordForm(None)
+            return render(request, 'registration/password_set_form.html',
+                          {'form':form})
+    return render(request, 'registration/activate.html')
 
 def register(request, backend, success_url=None, form_class=None,
              disallowed_url='registration_disallowed',

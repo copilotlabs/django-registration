@@ -1,6 +1,7 @@
 
 from registration.backends.default import DefaultBackend
 from registration.forms import RegistrationFormUsernameEmailMatch
+from django.contrib.auth import login
 
 
 class NamelessBackend(DefaultBackend):
@@ -14,6 +15,6 @@ class NamelessBackend(DefaultBackend):
         account activation and login.
         """
 
-        new_user = authenticate(username=username, password=password)
-        login(request, new_user)
+        user.backend = self.__class__
+        login(request, user)
         return ('/', (), {})
