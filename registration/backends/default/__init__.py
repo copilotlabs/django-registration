@@ -1,3 +1,6 @@
+try: from prism import registration
+except: pass
+
 from django.conf import settings
 from django.contrib.sites.models import RequestSite
 from django.contrib.sites.models import Site
@@ -46,6 +49,9 @@ class DefaultBackend(object):
     fields and supported operations.
     
     """
+
+    send_email = True
+
     def register(self, request, **kwargs):
         """
         Given a username, email address and password, register a new
@@ -76,7 +82,7 @@ class DefaultBackend(object):
         else:
             site = RequestSite(request)
         new_user = RegistrationProfile.objects.create_inactive_user(username, email,
-                                                                    password, site)
+                                                                    password, site, send_email=self.send_email)
         signals.user_registered.send(sender=self.__class__,
                                      user=new_user,
                                      request=request)

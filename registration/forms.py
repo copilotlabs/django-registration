@@ -115,7 +115,7 @@ class RegistrationFormUsernameEmailMatch(RegistrationFormUniqueEmail):
         """
         if 'username' in self.cleaned_data and 'email' in self.cleaned_data:
             if self.cleaned_data['username'] != self.cleaned_data['email']:
-                raise forms.ValidationError(_("The username and email fields didn't match."))
+                raise forms.ValidationError(_("The email fields didn't match."))
         try:
             user = User.objects.get(username__iexact=self.cleaned_data['username'])
         except User.DoesNotExist:

@@ -1,3 +1,6 @@
+try: from prism import registration
+except: pass
+
 import datetime
 
 import simplejson as json
@@ -9,15 +12,35 @@ from django.core.urlresolvers import reverse
 from django.test import TestCase
 
 from registration import forms
+from django.contrib.auth.forms import SetPasswordForm
 from registration.models import RegistrationProfile
 
 
-class RegistrationViewTests(TestCase):
+class BackendRegistrationViewTests(TestCase):
     """
     Test the registration views.
 
     """
     urls = 'registration.tests.urls'
+
+    def _create_test_user(self, username='bob',
+            password='secret', email=None):
+        """
+        Create a test user
+
+        Email will be username@example.com if not provided
+
+        """
+
+        email = (email or username+'@example.com')
+        self.client.post(reverse('registration_register'),
+                         data={'username': username,
+                               'email': email,
+                               'password1': password,
+                               'password2': password})
+        profile = RegistrationProfile.objects.get(user__username=username)
+        user = User.objects.get(username=username)
+        return (profile, user, username, password, email)
 
     def setUp(self):
         """
@@ -313,3 +336,195 @@ class RegistrationViewTests(TestCase):
         self.assertEqual(response.context['foo'], 'bar')
         # Callables in extra_context are called to obtain the value.
         self.assertEqual(response.context['callable'], 'called')
+
+
+class NamelessBackendRegistrationViewTests(object):
+    """
+    Test views specific to NamelessBackend
+    """
+
+    def _create_test_user(self, username='user@example.com',
+            password='secret', email='user@example.com'):
+        """
+        Create a test user
+
+        'username' and 'email' must match if provided
+
+        """
+        self.assertTrue(username == email)
+        return super(NamelessBackendRegistrationViewTests, self)._create_test_user(
+                        username=username,
+                        email=email,
+                        password=password
+                    )
+
+    def test_activate_np_first_click_valid_code(self):
+        """
+        Test the activate_new_password view's initial response given a valid activation code
+
+        """
+
+        # User registers an account.
+        profile, user, username, password, email = self._create_test_user()
+
+        # User clicks link
+        response = self.client.get(reverse('registration_activate_new_password',
+                            kwargs={'activation_key': profile.activation_key}))
+
+        # Check that we respond with a set-password page
+        self.assertTemplateUsed(response,
+                                'registration/password_set_form.html')
+        self.assertTrue(isinstance(response.context['form'], SetPasswordForm))
+
+        # User shouldn't be active at this point
+        self.assertFalse(user.is_active)
+
+    def test_activate_np_first_click_no_code(self):
+        """
+        Test the activate_new_password view's initial response given an invalid link
+
+        """
+
+        # User registers an account.
+        profile, user, username, password, email = self._create_test_user()
+
+        # User clicks incorrect link (maybe cut off in email)
+        response = self.client.get(reverse('registration_activate_new_password',
+                            kwargs={'activation_key': ''}))
+
+        # Check that we respond with a 'something went wrong' page
+        self.assertTrue('registration/activate.html' in response.templates)
+        self.assertFalse('account' in response.context)
+
+        # User shouldn't be active at this point
+        self.assertFalse(user.is_active)
+
+    def test_activate_np_first_click_expired_code(self):
+        """
+        Test the activate_new_password view's initial response given an invalid link
+
+        """
+
+        # User registers an account.
+        profile, user, username, password, email = self._create_test_user()
+        activation_key = profile.activation_key
+        user.date_joined = user.date_joined - datetime.timedelta(days=settings.ACCOUNT_ACTIVATION_DAYS)
+        user.save()
+
+        # User clicks old link
+        response = self.client.get(reverse('registration_activate_new_password',
+                            kwargs={'activation_key': activation_key}))
+
+        # Check that we respond with a 'something went wrong' page
+        self.assertTrue('registration/activate.html' in response.templates)
+        self.assertFalse('account' in response.context)
+
+        # User shouldn't be active at this point
+        self.assertFalse(user.is_active)
+
+    def test_activate_np_complete_success(self):
+        """
+        Test the activate_new_password view's initial response given a valid activation code
+
+        """
+
+        # User registers an account.
+        profile, user, username, password, email = self._create_test_user()
+
+        # User clicks link
+        response = self.client.get(reverse('registration_activate_new_password',
+                            kwargs={'activation_key': profile.activation_key}))
+
+        # Check that we respond with a set-password page
+        self.assertTemplateUsed(response,
+                                'registration/password_set_form.html')
+        self.assertTrue(isinstance(response.context['form'], SetPasswordForm))
+
+        # User submits SetPasswordForm
+        response = self.client.get(reverse('registration_activate_new_password',
+                                    kwargs={'new_password1': 'newpass',
+                                            'new_password2': 'newpass'}))
+
+        # should perform post_activation_redirect
+        self.assertRedirects(response, (user.get_absolute_url(), (), {}))
+
+        # User should be active at this point
+        self.assertFalse(user.is_active)
+
+    def test_activate_np_post_activate_link(self):
+        """
+        steps: valid link clicked
+            -> password entered
+            -> user activated
+            -> link loaded again (new session?)
+            -> invalid message
+        """
+
+        # User registers an account.
+        profile, user, username, password, email = self._create_test_user()
+
+        # User clicks link
+        response = self.client.get(reverse('registration_activate_new_password',
+                            kwargs={'activation_key': profile.activation_key}))
+
+        # Check that we respond with a set-password page
+        self.assertTemplateUsed(response,
+                                'registration/password_set_form.html')
+        self.assertTrue(isinstance(response.context['form'], SetPasswordForm))
+
+        # User submits SetPasswordForm
+        response = self.client.get(reverse('registration_activate_new_password',
+                                    kwargs={'new_password1': 'newpass',
+                                            'new_password2': 'newpass'}))
+
+        # should perform post_activation_redirect
+        self.assertRedirects(response, (user.get_absolute_url(), (), {}))
+
+        # User should be active at this point
+        self.assertFalse(user.is_active)
+
+        # User clicks link again
+        response = self.client.get(reverse('registration_activate_new_password',
+                            kwargs={'activation_key': profile.activation_key}))
+
+        # Check that we respond with a 'something went wrong' page
+        self.assertTrue('registration/activate.html' in response.templates)
+        self.assertFalse('account' in response.context)
+
+        # User should still be active
+        self.assertFalse(user.is_active)
+
+    def test_activate_np_multi_click(self):
+        """
+        steps: valid link clicked
+            -> link reloaded (new session?)
+            -> password entered
+            -> user activated
+        """
+
+
+        # User registers an account.
+        profile, user, username, password, email = self._create_test_user()
+
+        # User clicks link
+        self.client.get(reverse('registration_activate_new_password',
+                            kwargs={'activation_key': profile.activation_key}))
+        # User clicks link again
+        response = self.client.get(reverse('registration_activate_new_password',
+                            kwargs={'activation_key': profile.activation_key}))
+
+        # Check that we respond with a set-password page
+        self.assertTemplateUsed(response,
+                                'registration/password_set_form.html')
+        self.assertTrue(isinstance(response.context['form'], SetPasswordForm))
+
+        # User submits SetPasswordForm
+        response = self.client.get(reverse('registration_activate_new_password',
+                                    kwargs={'new_password1': 'newpass',
+                                            'new_password2': 'newpass'}))
+
+        # should perform post_activation_redirect
+        self.assertRedirects(response, (user.get_absolute_url(), (), {}))
+
+        # User should be active at this point
+        self.assertFalse(user.is_active)

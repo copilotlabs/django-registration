@@ -1,3 +1,6 @@
+try: from prism import registration
+except: pass
+
 import datetime
 import random
 import re
@@ -69,6 +72,11 @@ class RegistrationManager(models.Manager):
         if profile.activation_key_expired():
             return False
         return profile
+
+    def recreate_profile(self, profile):
+        new_profile = self.create_profile(profile.user)
+        profile.delete()
+        return new_profile
     
     def create_inactive_user(self, username, email, password,
                              site, send_email=True):

@@ -101,6 +101,15 @@ def activate(request, backend,
 @csrf_protect
 @never_cache
 def activate_new_password(request, backend, activation_key):
+    """
+    Activate a user while setting their password.
+
+    This will initially return a 'Set Password' page if the activation is
+    correct and the user hasn't submitted the form. When the user submits the
+    form it will both set the user's password and activate their account.
+
+    If either the activation key or form input are invalid, a 
+    """
     profile = RegistrationProfile.objects.get_activation_profile(activation_key)
     if profile:
         user = profile.user
@@ -111,9 +120,9 @@ def activate_new_password(request, backend, activation_key):
                 return activate(request, backend, activation_key=activation_key)
         else:
             form = SetPasswordForm(None)
-            return render(request, 'registration/password_set_form.html',
-                          {'form':form})
-    return render(request, 'registration/activate.html')
+        return render(request, 'registration/password_set_form.html',
+                      {'form':form})
+    return render_to_response('registration/activate.html', {})
 
 def register(request, backend, success_url=None, form_class=None,
              disallowed_url='registration_disallowed',
