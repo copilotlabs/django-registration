@@ -13,8 +13,7 @@ from registration.models import RegistrationProfile
 class Command(BaseCommand):
 
     option_list = BaseCommand.option_list \
-            + (make_option('--userid', dest='userid'),) \
-            + (make_option('--unitid', dest='unitid'),)
+            + (make_option('--userid', dest='userid'),)
 
 
     def handle(self, *args, **options):
@@ -26,31 +25,30 @@ class Command(BaseCommand):
 
         traceback = options.get('traceback') or False # True or False
         attempt.traceback = bool(traceback)
+        attempt.error_actions = { '*' : CommandError }
 
         userid = options.get('userid')
-        unitid = options.get('unitid')
-        if (not userid) and (not unitid):
-            raise CommandError("Must provide --userid or --unitid")
+        if not userid:
+            raise CommandError("Must provide --userid")
 
-        if userid:
-            with attempt('Looking up User by userid', CommandError("There is no User with that userid.")):
-                user = User.objects.get(id=userid)
-                if user.is_active:
-                    print "There is nothing to be done, the user is already active."
-                    return
-        if unitid:
-            with attempt('Looking up User by unitid', CommandError("There is no User with that unitid.")):
-                user = User.objects.get(unit__id=unitid)
-                if user.is_active:
-                    print "There is nothing to be done, the user is already active."
-                    return
+        with attempt('Looking up User by userid',
+                { '*': CommandError("There is no User with that userid.") }):
+            user = User.objects.get(id=userid)
+            if user.is_active:
+                print "There is nothing to be done, the user is already active."
+                return
 
         with attempt("Looking up activation profile for given User"):
-            profile = RegistrationProfile.objects.get(user=user)
+            try:
+                profile = RegistrationProfile.objects.get(user=user)
+            except:
+                with attempt("Didn't find activation profile, creating a new one"):
+                    profile = RegistrationProfile.objects.create_profile(user)
         
         if profile.activation_key_expired():
-            with attempt("Activation key has expired, recreating activation profile", CommandError):
+            with attempt("Activation key has expired, recreating activation profile"):
                 profile = RegistrationProfile.objects.recreate_profile(profile)
 
         with attempt("Sending email"):
             profile.send_activation_email(Site.objects.get_current())
+
