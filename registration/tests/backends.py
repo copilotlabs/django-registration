@@ -12,7 +12,7 @@ from django.core import mail
 from django.core.exceptions import ImproperlyConfigured
 from django.core.handlers.wsgi import WSGIRequest
 from django.test import Client
-from django.test import TestCase
+from django.test import TestCase, TransactionTestCase
 
 from registration import forms
 from registration import signals
@@ -23,6 +23,9 @@ from registration.backends.nameless import NamelessBackend
 from registration.backends.simple import SimpleBackend
 from registration.models import RegistrationProfile
 
+from prism.utils.debug import format_exception
+import sys
+sys.excepthook = format_exception
 
 class _MockRequestClient(Client):
     """
@@ -418,7 +421,7 @@ class NamelessRegistrationBackendTests(DefaultRegistrationBackendTests):
                          (new_user.get_absolute_url(), (), {}))
 
 
-class SimpleRegistrationBackendTests(TestCase):
+class SimpleRegistrationBackendTests(TransactionTestCase):
     """
     Test the simple registration backend, which does signup and
     immediate activation.

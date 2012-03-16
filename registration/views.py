@@ -8,6 +8,7 @@ import simplejson as json
 from django.views.decorators.cache import never_cache
 from django.views.decorators.csrf import csrf_protect
 from django.contrib.auth import REDIRECT_FIELD_NAME
+from django.contrib.auth import authenticate, login
 from django.contrib.auth.forms import SetPasswordForm
 from django.shortcuts import redirect
 from django.shortcuts import render_to_response, render
@@ -117,7 +118,10 @@ def activate_new_password(request, backend, activation_key):
             form = SetPasswordForm(user, request.POST)
             if form.is_valid():
                 form.save()
-                return activate(request, backend, activation_key=activation_key)
+                activate(request, backend, activation_key=activation_key)
+                new_user = authenticate(username=user.username, password=form.cleaned_data['new_password1'])
+                login(request, new_user)
+                return render_to_response('registration/activate.html', {'account':new_user})
         else:
             form = SetPasswordForm(None)
         return render(request, 'registration/password_set_form.html',

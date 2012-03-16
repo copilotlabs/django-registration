@@ -3,7 +3,7 @@ except: pass
 
 from django.test import TransactionTestCase
 from registration.tests.backends import _mock_request
-from registration.backends.default import DefaultBackend
+from registration.backends.nameless import NamelessBackend
 
 from django.core import mail
 from registration.management.commands.send_activation_email \
@@ -11,16 +11,12 @@ from registration.management.commands.send_activation_email \
 from django.core.management.base import CommandError
 from django.contrib.auth.models import User
 from registration.models import RegistrationProfile
-from prism.units.models import Unit
 
 class SendActivationEmailCommand (TransactionTestCase):
 
     command = SendActivationEmailCommand()
-    backend = DefaultBackend()
+    backend = NamelessBackend()
 
-    def test_no_args(self):
-        with self.assertRaises(CommandError):
-            self.command.handle()
 
     def _create_test_user(self, username='bob',
             password='secret', email=None):
@@ -56,33 +52,13 @@ class SendActivationEmailCommand (TransactionTestCase):
         self.command.handle(userid=new_user.id)
         self.assertEqual(len(mail.outbox), email_count)
 
-    def test_missing_or_wrong_userid_or_unitid(self):
-
+    def test_no_unitid(self):
         user, username, password, email = self._create_test_user()
-        unit = Unit(user=user)
-        unit.save()
-        userid = user.id
-        unitid = unit.id
-        wrong = -1
-        passing_cases = [
-            { 'userid': userid, 'unitid': unitid },
-            { 'userid': userid },
-            { 'unitid': unitid },
-        ]
-        failing_cases = [
-            { 'userid': wrong },
-            { 'userid': wrong , 'unitid': wrong },
-            { 'userid': userid, 'unitid': wrong },
-            { 'userid': wrong , 'unitid': unitid },
-            { 'unitid': wrong },
-        ]
+        with self.assertRaises(CommandError):
+            self.command.handle()
 
-        for kwargs in passing_cases:
-            email_count = len(mail.outbox)
-            self.command.handle(**kwargs)
-            self.assertEqual(len(mail.outbox), email_count + 1)
-            user.is_valid = False
-
-        for kwargs in failing_cases:
-            with self.assertRaises(CommandError):
-                self.command.handle(**kwargs)
+    def test_wrong_userid(self):
+        user, username, password, email = self._create_test_user()
+        wrongid = -1
+        with self.assertRaises(CommandError):
+            self.command.handle(userid=wrongid)

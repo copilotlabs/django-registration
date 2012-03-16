@@ -1,13 +1,15 @@
 try: from prism import registration
 except: pass
 
-from django.contrib.sites.models import RequestSite, Site
+from django.contrib.sites.models import Site
 from django.core.management.base import BaseCommand, CommandError
 from django.contrib.auth.models import User
 from optparse import make_option
 
-from prism.utils.debug import attempt
 from registration.models import RegistrationProfile
+from prism.utils.debug import attempt, format_exception
+import sys
+sys.excepthook = format_exception
 
 
 class Command(BaseCommand):
