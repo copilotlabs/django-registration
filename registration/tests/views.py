@@ -1,6 +1,6 @@
 import datetime
 
-import simplejson as json
+import json
 
 from django.conf import settings
 from django.contrib.auth.models import User

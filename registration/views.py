@@ -3,7 +3,7 @@ Views which allow users to create and activate accounts.
 
 """
 
-import simplejson as json
+import json
 
 from django.contrib.auth import REDIRECT_FIELD_NAME
 from django.shortcuts import redirect

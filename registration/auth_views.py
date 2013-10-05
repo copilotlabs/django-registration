@@ -1,5 +1,5 @@
 
-import simplejson as json
+import json
 
 from django.views.decorators.cache import never_cache
 

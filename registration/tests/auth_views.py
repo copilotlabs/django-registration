@@ -1,5 +1,5 @@
 
-import simplejson as json
+import json
 
 from django.core.urlresolvers import reverse
 from django.contrib.auth import SESSION_KEY
