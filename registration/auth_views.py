@@ -45,5 +45,5 @@ def login(request, authentication_form=AuthenticationForm,
             response_data['errors'] = [u'Only the POST method is supported for this endpoint.']
             return json_response(response_data)
 
-    return auth_views_login(request, *args, **kwargs)
+    return auth_views_login(request, authentication_form=authentication_form, *args, **kwargs)
 
